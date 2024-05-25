@@ -1,5 +1,7 @@
 package org.example.kafkalabs.listeners;
 
+import org.apache.kafka.common.Metric;
+import org.apache.kafka.common.MetricName;
 import org.example.kafkalabs.model.CatData;
 import org.example.kafkalabs.utill.KafkaConnectMapper;
 import org.slf4j.Logger;
@@ -9,24 +11,61 @@ import org.springframework.stereotype.Component;
 
 import static org.example.kafkalabs.config.kafka.KafkaTopicConfig.*;
 
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
+
+import java.util.Map;
+
 @Component
 public class KafkaListeners {
 
     private final KafkaConnectMapper kafkaConnectMapper;
+    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final ConsumerFactory<String, String> consumerFactory;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaListeners.class);
 
-    public KafkaListeners(KafkaConnectMapper kafkaConnectMapper) {
+    public KafkaListeners(KafkaTemplate<String, String> kafkaTemplate,
+                          KafkaConnectMapper kafkaConnectMapper,
+                          ConsumerFactory<String, String> consumerFactory) {
+        this.kafkaTemplate = kafkaTemplate;
         this.kafkaConnectMapper = kafkaConnectMapper;
+        this.consumerFactory = consumerFactory;
     }
 
 
     @KafkaListener(topics = "cats.public.cats", groupId = "None", containerFactory = "listenerFactory")
-    void listenCatData(String message) {
+    void listenCatData(String message, Consumer<?, ?> consumer) {
         CatData cat = kafkaConnectMapper.getObjectFromStringMessage(message, CatData.class);
         logProcessMessage(cat, INPUT_TOPIC);
+        sendConsumerMetrics(consumer);
     }
 
+    private void sendConsumerMetrics(Consumer<?, ?> consumer) {
+        if (consumer != null) {
+            Map<MetricName, ? extends Metric> metrics = consumer.metrics();
+            String metricsString = getMetricsString(metrics);
+            kafkaTemplate.send(PRODUCER_METRICS_TOPIC, metricsString);
+            LOGGER.warn("Sent consumer metrics to topic {}", PRODUCER_METRICS_TOPIC);
+        } else {
+            LOGGER.warn("Consumer is not available.");
+        }
+    }
+
+    private String getMetricsString(Map<MetricName, ? extends Metric> metricNameMap) {
+        StringBuilder stringBuilder = new StringBuilder();
+        for (Map.Entry<MetricName, ? extends Metric> entry : metricNameMap.entrySet()) {
+            MetricName metricName = entry.getKey();
+            Metric metric = entry.getValue();
+            stringBuilder.append(metricName.name())
+                    .append(": ")
+                    .append(metric.metricValue())
+                    .append("\n");
+        }
+        return stringBuilder.toString();
+    }
 //    @KafkaListener(topics = "more-than-3", groupId = "None", containerFactory = "listenerFactory")
 //    void listenMoreThan3(String message) {
 //        CatData cat = kafkaConnectMapper.getObjectFromStringMessage(message, CatData.class);
