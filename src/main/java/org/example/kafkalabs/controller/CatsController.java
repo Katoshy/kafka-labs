@@ -2,7 +2,6 @@ package org.example.kafkalabs.controller;
 
 import org.example.kafkalabs.model.CatData;
 import org.example.kafkalabs.service.KafkaService;
-import org.example.kafkalabs.streams.KafkaStreamsPipelineLab3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -35,35 +34,13 @@ public class CatsController {
 
     @PostMapping()
     @ResponseStatus(HttpStatus.CREATED)
-    public void saveCatData(@RequestBody CatData cat) {
+    public void sendCatData(@RequestBody CatData cat) {
         LOGGER.info("Attempting to save cat data in database: {}", cat);
         try {
-            String sql = "INSERT INTO cats (tag_id, animal_id, animal_taxon, deploy_on_date, deploy_off_date, hunt, " +
-                    "prey_p_month, animal_reproductive_condition, animal_sex, hrs_indoors, n_cats, " +
-                    "food_dry, food_wet, food_other, study_site, age_years) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-            jdbcTemplate.update(sql,
-                    cat.getTagId(),
-                    cat.getAnimalId(),
-                    cat.getAnimalTaxon(),
-                    cat.getDeployOnDate(),
-                    cat.getDeployOffDate(),
-                    cat.isHunt(),
-                    cat.getPreyP_Month(),
-                    cat.getAnimalReproductiveCondition(),
-                    cat.getAnimalSex(),
-                    cat.getHrsIndoors(),
-                    cat.getN_Cats(),
-                    cat.isFoodDry(),
-                    cat.isFoodWet(),
-                    cat.isFoodOther(),
-                    cat.getStudySite(),
-                    cat.getAgeYears());
-
-            LOGGER.info("Successfully inserted cat data into the database.");
+            kafkaService.sendToKafka(cat, INPUT_TOPIC);
+            LOGGER.info("Successfully send cat data into the Kafka INPUT TOPIC.");
         } catch (Exception e) {
-            LOGGER.error("Error occurred while saving cat data to database. Details: {}", e.getMessage());
+            LOGGER.error("Error occurred while sending cat data to Kafka. Details: {}", e.getMessage());
         }
     }
 }

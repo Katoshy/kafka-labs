@@ -26,62 +26,64 @@
 //        this.kafkaConnectMapper = kafkaConnectMapper;
 //    }
 //
-//  //  @Autowired
-//    public void lab4Pipeline(StreamsBuilder streamsBuilder) {
+//    @Autowired
+//    public void lab4PipelineCowsPrice(StreamsBuilder streamsBuilder) {
 //        KStream<String, String> messageStream = streamsBuilder
 //                .stream(INPUT_TOPIC, Consumed.with(STRING_SERDE, STRING_SERDE));
 //
-//        // 1. Порахувати кількість записів, де ціна за корову менше 1100.
-//        KTable<String, Long> cowsPriceLower1100 = messageStream.selectKey((key, value) -> KEY)
+//        // 1. Порахувати кількість котів, що ловлять більше 3 мишей на місяць.
+//        KTable<String, Long> huntsMoreThan3 = messageStream.selectKey((key, value) -> KEY)
 //                .mapValues(value -> kafkaConnectMapper.getObjectFromStringMessage(value, CatData.class))
-//                .filter((key, value) -> value.getMilkCowCostPerAnimal() < 1100)
+//                .filter((key, value) -> value.getPreyP_Month() > 3)
 //                .mapValues(kafkaConnectMapper::mapObjectToStringMessage)
 //                .groupBy((key, value) -> key)
 //                .count();
 //
-//        cowsPriceLower1100.toStream()
+//        huntsMoreThan3.toStream()
 //                .mapValues(Object::toString)
-//                .to(AMOUNT_WHERE_COW_PRICE_LOWER_1100);
+//                .to(AMOUNT_WHERE_CAT_HUNTS_OVER_3);
 //
-//        // 2. Порахувати скільки було вироблено молока за ті роки, де середня ціна за молоко була менше 0.13.
-//        KTable<String, Double> amountOfMilkProducedDuringYearsAvgPriceMilkLower013 =
+//        // 2. Порахувати кількість стерилізованих котів молодших 4 років.
+//        KTable<String, Long> amountOfMilkProducedDuringYearsAvgPriceMilkLower013 =
 //                messageStream.selectKey((key, value) -> KEY)
 //                        .mapValues(value -> kafkaConnectMapper.getObjectFromStringMessage(value, CatData.class))
-//                        .filter((key, value) -> value.getAvgPriceMilk() < 0.13)
-//                        .mapValues(CatData::getMilkProductionLbs)
-//                        .groupBy((key, value) -> key, Grouped.with(Serdes.String(), Serdes.Double()))
-//                        .reduce(Double::sum);
+//                        .filter((key, value) -> value.getAgeYears() < 4 &&
+//                                ("Neutered".equals(value.getAnimalReproductiveCondition()) ||
+//                                        "Spayed".equals(value.getAnimalReproductiveCondition())))
+//                        .mapValues(kafkaConnectMapper::mapObjectToStringMessage)
+//                        .groupBy((key, value) -> key)
+//                        .count();
 //
 //        amountOfMilkProducedDuringYearsAvgPriceMilkLower013.toStream()
-//                .mapValues(value -> value * 0.44)
-//                .mapValues(value -> value.toString() + " liters")
-//                .to(AMOUNT_MILK_PRODUCED_DURING_YEARS_AVG_MILK_PRICE_LOWER_013, Produced.with(Serdes.String(), Serdes.String()));
+//                .mapValues(Object::toString)
+//                .to(STERILIZED_CATS_YOUNGER_THAN_4_YEARS);
 //
-//
+////
 //        // 3. Зчитати у Kafka Stream потоки з п.2 лабораторної роботи №3 (результат розгалудження).
 //        // Об’єднати ці потоки за допомогою операцій join.
-//        KStream<String, String> lessThan013 = streamsBuilder
-//                .stream(LESS_THAN_013_OUTPUT_TOPIC, Consumed.with(STRING_SERDE, STRING_SERDE));
 //
-//        KStream<String, String> moreEqualThan013LessEqualThan016 = streamsBuilder
-//                .stream(MORE_EQUAL_THAN_013_LESS_EQUAL_THAN_016_OUTPUT_TOPIC, Consumed.with(STRING_SERDE, STRING_SERDE));
+//        KStream<String, String> lessThan4 = streamsBuilder
+//                .stream(LESS_THAN_4_OUTPUT_TOPIC, Consumed.with(STRING_SERDE, STRING_SERDE));
 //
-//        KStream<String, String> moreThan016 = streamsBuilder
-//                .stream(MORE_THAN_016_OUTPUT_TOPIC, Consumed.with(STRING_SERDE, STRING_SERDE));
+//        KStream<String, String> moreEqualThan4LessEqualThan10 = streamsBuilder
+//                .stream(MORE_EQUAL_THAN_4_LESS_EQUAL_THAN_10_OUTPUT_TOPIC, Consumed.with(STRING_SERDE, STRING_SERDE));
+//
+//        KStream<String, String> moreThan10 = streamsBuilder
+//                .stream(MORE_THAN_10_OUTPUT_TOPIC, Consumed.with(STRING_SERDE, STRING_SERDE));
 //
 //
-//        KStream<String, String> joinedStream = lessThan013
+//        KStream<String, String> joinedStream = lessThan4
 //                .join(
-//                        moreEqualThan013LessEqualThan016,
+//                        moreEqualThan4LessEqualThan10,
 //                        StringUtil::getRandom,
 //                        JoinWindows.of(Duration.ofMinutes(5))
 //                )
 //                .join(
-//                        moreThan016,
+//                        moreThan10,
 //                        StringUtil::getRandom,
 //                        JoinWindows.of(Duration.ofMinutes(5))
 //                );
 //
-//        joinedStream.to(JOINED_AVG_PRICE_MILK_TOPIC);
+//        joinedStream.to(JOINED_4_TO_10_YEARS_CATS);
 //    }
 //}
